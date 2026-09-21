@@ -47,6 +47,41 @@ public class TestRewriteTablePathUtil {
   }
 
   @Test
+  public void testRewrittenMetadataJsonKeepsSourceFileName() {
+    // Example matching rewrite_table_path's rewriteVersionFile naming:
+    // stagingPath(source) and newPath(source) both preserve the metadata.json basename.
+    String sourcePrefix = "s3://bucket-one/warehouse/db.db/orders";
+    String targetPrefix = "s3://bucket-two/warehouse/db.db/orders";
+    String stagingDir = "s3://bucket-staging/orders-rewrite";
+    String sourceMetadata =
+        "s3://bucket-one/warehouse/db.db/orders/metadata/v3.metadata.json";
+
+    String stagingPath =
+        RewriteTablePathUtil.stagingPath(sourceMetadata, sourcePrefix, stagingDir);
+    String targetPath = RewriteTablePathUtil.newPath(sourceMetadata, sourcePrefix, targetPrefix);
+
+    assertThat(RewriteTablePathUtil.fileName(stagingPath)).isEqualTo("v3.metadata.json");
+    assertThat(RewriteTablePathUtil.fileName(targetPath)).isEqualTo("v3.metadata.json");
+    assertThat(RewriteTablePathUtil.fileName(stagingPath))
+        .isEqualTo(RewriteTablePathUtil.fileName(sourceMetadata));
+    assertThat(RewriteTablePathUtil.fileName(targetPath))
+        .isEqualTo(RewriteTablePathUtil.fileName(sourceMetadata));
+
+    assertThat(stagingPath)
+        .isEqualTo("s3://bucket-staging/orders-rewrite/metadata/v3.metadata.json");
+    assertThat(targetPath)
+        .isEqualTo("s3://bucket-two/warehouse/db.db/orders/metadata/v3.metadata.json");
+
+    // UUID-style metadata names are preserved the same way
+    String uuidMetadata =
+        "s3://bucket-one/warehouse/db.db/orders/metadata/00001-abc.metadata.json";
+    assertThat(
+            RewriteTablePathUtil.fileName(
+                RewriteTablePathUtil.newPath(uuidMetadata, sourcePrefix, targetPrefix)))
+        .isEqualTo("00001-abc.metadata.json");
+  }
+
+  @Test
   public void testStagingPathBackwardCompatibility() {
     // Test that the deprecated method still works
     String originalPath = "/some/path/file.parquet";
